@@ -111,6 +111,52 @@ docker exec etl-postgres-db psql -U monitor_user -d price_monitor_db -c "SELECT 
 
 ---
 
+## 🛒 Ejecución del Scraping en Vivo (Páginas Reales)
+
+El scraper de Python ya está configurado en el ecosistema para conectarse en vivo a **lider.cl** y **jumbo.cl**, extraer las categorías parametrizadas en [config.py](file:///Users/luisr/Proyectos/ETL%20-%20Monitoreo%20de%20Precios/price-monitor-scraper/config.py) (Despensa y Lácteos) e inyectarlas al Backend.
+
+Dispones de dos métodos para gatillar la recolección real:
+
+### Método A: Ejecución en Vivo mediante Docker (Recomendado)
+
+Dado que todo el ecosistema ya está contenerizado, el scraper corre una extracción completa de forma automática la primera vez que levantas el compose (`docker compose up -d`).
+
+Si deseas **volver a gatillar la extracción en vivo bajo demanda** en cualquier momento posterior (por ejemplo, al día siguiente para registrar un nuevo histórico), solo debes iniciar el servicio del scraper:
+
+```bash
+docker compose start scraper-service
+```
+
+*Este comando despertará al contenedor del scraper, el cual abrirá Chromium en segundo plano, extraerá los precios en vivo de Líder y Jumbo, transmitirá el lote al backend y luego se apagará de forma limpia automáticamente.*
+
+Para ver los logs y seguir el progreso de la extracción real en tiempo real:
+```bash
+docker logs -f etl-python-scraper
+```
+
+### Método B: Ejecución Interactiva Local (Para Desarrollo / Ver Navegador)
+
+Si estás depurando selectores en desarrollo y quieres **ver visualmente cómo la automatización de Chrome navega y ejecuta scroll en Jumbo y Líder**:
+
+1. Asegurar que los contenedores de la Base de Datos y Backend estén arriba (en los puertos `5433` y `8085`).
+2. Ingresar al directorio del scraper:
+   ```bash
+   cd price-monitor-scraper
+   ```
+3. Activar el entorno virtual e instalar dependencias en tu máquina:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+4. Modificar la variable `HEADLESS = False` en [config.py](file:///Users/luisr/Proyectos/ETL%20-%20Monitoreo%20de%20Precios/price-monitor-scraper/config.py) para que Selenium levante la interfaz gráfica de Chrome.
+5. Iniciar la recolección manual en vivo:
+   ```bash
+   python3 main.py
+   ```
+
+---
+
 ## 🛡️ Estándar de Mensajes de Commits (Conventional Commits)
 
 Este repositorio exige el uso estricto del estándar de **Conventional Commits** para mantener un historial legible y automatizable:
