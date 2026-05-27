@@ -34,3 +34,10 @@ ENV/
 # Contenedores
 .docker/
 docker/postgres_data/
+
+# Agent and study/plan files (Portfolio clean-up)
+.agents/
+skills-lock.json
+estudiar.md
+plan.md
+infonegocio.md
