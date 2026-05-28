@@ -119,7 +119,7 @@ class JumboScraper(BaseScraper):
                             "isAvailable": is_available
                         })
                 except Exception as card_err:
-                    logger.debug(f"Error procesando tarjeta individual en Jumbo: {card_err}")
+                    logger.error(f"Error procesando tarjeta individual en Jumbo: {card_err}", exc_info=True)
                     continue
                     
         except Exception as e:
