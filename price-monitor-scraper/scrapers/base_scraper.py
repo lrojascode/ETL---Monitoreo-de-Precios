@@ -2,6 +2,7 @@ import time
 import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -28,15 +29,29 @@ class BaseScraper:
         # User-Agent estándar y robusto de escritorio
         self.options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
+        # Perfil de usuario persistente para almacenar cookies, sesión y preferencias (ej. ubicación seleccionada)
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        profile_path = os.path.join(os.path.dirname(current_dir), "chrome_profile")
+        self.options.add_argument(f"--user-data-dir={profile_path}")
+        
         # Detección adaptativa de la ruta del navegador para portabilidad local/Docker
         import os
+        chromedriver_path = "/usr/bin/chromedriver"
+        
         if os.path.exists("/usr/bin/chromium"):
             self.options.binary_location = "/usr/bin/chromium"
         elif os.path.exists("/usr/bin/chromium-browser"):
             self.options.binary_location = "/usr/bin/chromium-browser"
             
         logger.info("Inicializando Chrome WebDriver...")
-        self.driver = webdriver.Chrome(options=self.options)
+        if os.path.exists(chromedriver_path):
+            logger.info(f"Usando ChromeDriver local del sistema: {chromedriver_path}")
+            service = Service(executable_path=chromedriver_path)
+            self.driver = webdriver.Chrome(service=service, options=self.options)
+        else:
+            logger.info("ChromeDriver local no detectado, usando Selenium Manager de forma automática.")
+            self.driver = webdriver.Chrome(options=self.options)
         self.driver.set_window_size(1920, 1080)
         
         # Inyectar evasión avanzada por stealth
