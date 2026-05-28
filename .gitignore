@@ -41,3 +41,7 @@ skills-lock.json
 estudiar.md
 plan.md
 infonegocio.md
+
+# Archivos temporales de extracción y depuración del scraper
+price-monitor-scraper/*.png
+price-monitor-scraper/chrome_profile/
