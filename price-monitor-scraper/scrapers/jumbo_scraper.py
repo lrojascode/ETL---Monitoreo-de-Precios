@@ -27,7 +27,7 @@ class JumboScraper(BaseScraper):
             # 2. Localizar tarjetas de producto
             # En Jumbo (VTEX) las tarjetas tienen atributos data-testid='product-card' o clases similares
             cards = self.driver.find_elements(By.XPATH, 
-                "//div[@data-testid='product-card'] | //div[contains(@class, 'product-card')] | //section[contains(@class, 'vtex-product-summary')]"
+                "//*[contains(@class, 'vtex-product-summary-2-x-container') or contains(@class, 'vtex-product-summary') or contains(@class, 'product-card') or @data-testid='product-card']"
             )
             logger.info(f"Se detectaron {len(cards)} tarjetas de producto visibles en Jumbo para la categoría '{category_name}'.")
             
@@ -35,7 +35,7 @@ class JumboScraper(BaseScraper):
                 try:
                     # Nombre de Producto
                     name_elem = card.find_element(By.XPATH, 
-                        ".//span[contains(@class, 'product-card-name')] | .//a[contains(@class, 'product-brand')] | .//h2 | .//span[contains(@class, 'brandName')]"
+                        ".//*[contains(@class, 'product-card-name')] | .//*[contains(@class, 'brandName')] | .//*[contains(@class, 'vtex-product-summary-2-x-name')] | .//h2 | .//h3"
                     )
                     name = name_elem.text.strip()
                     
