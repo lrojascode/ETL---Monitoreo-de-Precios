@@ -25,79 +25,55 @@ class JumboScraper(BaseScraper):
             self.scroll_incrementally(steps=8, delay=1.2)
             
             # 2. Localizar tarjetas de producto
-            # En Jumbo (VTEX) las tarjetas tienen atributos data-testid='product-card' o clases similares
-            cards = self.driver.find_elements(By.XPATH, 
-                "//*[contains(@class, 'vtex-product-summary-2-x-container') or contains(@class, 'vtex-product-summary') or contains(@class, 'product-card') or @data-testid='product-card']"
-            )
+            # En Jumbo las tarjetas se identifican de forma extremadamente robusta mediante el atributo 'data-cnstrc-item-id'
+            cards = self.driver.find_elements(By.XPATH, "//div[@data-cnstrc-item-id]")
             logger.info(f"Se detectaron {len(cards)} tarjetas de producto visibles en Jumbo para la categoría '{category_name}'.")
             
             for card in cards:
                 try:
-                    # Nombre de Producto
-                    name_elem = card.find_element(By.XPATH, 
-                        ".//*[contains(@class, 'product-card-name')] | .//*[contains(@class, 'brandName')] | .//*[contains(@class, 'vtex-product-summary-2-x-name')] | .//h2 | .//h3"
-                    )
-                    name = name_elem.text.strip()
+                    # Extraer ID (SKU) y Nombre del producto directamente de los atributos del contenedor
+                    sku = card.get_attribute("data-cnstrc-item-id")
+                    name = card.get_attribute("data-cnstrc-item-name")
                     
+                    # Precio base/activo en el atributo
+                    attr_price = card.get_attribute("data-cnstrc-item-price")
+                    price_val = int(attr_price) if attr_price and attr_price.isdigit() else 0
+                    
+                    if not sku or not name or price_val <= 0:
+                        continue
+                        
                     # URL del producto
-                    link_elem = card.find_element(By.XPATH, ".//a[contains(@href, '/')]")
-                    product_url = link_elem.get_attribute("href")
-                    
-                    # Extraer SKU de la URL o usar un ID generado/data-id
-                    # Jumbo VTEX a veces tiene urls como https://www.jumbo.cl/aceite-oliva-virgen-500ml/p
-                    # El SKU final o ID del producto está contenido en atributos
-                    sku = None
+                    product_url = None
                     try:
-                        sku = card.get_attribute("id") or card.get_attribute("data-sku")
+                        product_url = card.find_element(By.XPATH, ".//a").get_attribute("href")
                     except:
                         pass
                         
-                    if not sku:
-                        # Fallback a hash o segmento de la URL si no hay ID disponible
-                        sku = product_url.split("/")[-2] if product_url else None
+                    # Marca: VTEX a menudo lo tiene como una línea previa al nombre del producto en el texto acumulado
+                    lines = [line.strip() for line in card.text.splitlines() if line.strip()]
+                    brand = "Genérico"
+                    if name in lines:
+                        idx = lines.index(name)
+                        if idx > 0:
+                            possible_brand = lines[idx - 1]
+                            if not (possible_brand.startswith("$") or "dcto" in possible_brand.lower() or possible_brand.lower() in ["patrocinado", "agregar", "sin stock", "agotado"]):
+                                brand = possible_brand
                     
-                    # Marca (VTEX suele tener una clase vtex-product-summary-2-x-brandName)
-                    try:
-                        brand_elem = card.find_element(By.XPATH, ".//span[contains(@class, 'brandName')] | .//span[contains(@class, 'brand')]")
-                        brand = brand_elem.text.strip()
-                    except:
-                        brand = "Genérico"
-                        
-                    # Validar si el nombre contiene la marca al inicio (limpieza)
-                    if brand != "Genérico" and name.lower().startswith(brand.lower()):
-                        # Opcional: limpieza de redundancias
-                        pass
-
                     # Precios (Normal y Promo)
-                    price_normal = 0
+                    price_normal = price_val
                     price_promo = None
                     
+                    # Si el producto tiene oferta/descuento, suele mostrarse con un precio tachado (line-through)
                     try:
-                        # Buscar valores monetarios en la tarjeta
-                        # Jumbo VTEX estructura precios en componentes como '.jumbo-price' o '.price-selling'
-                        price_elements = card.find_elements(By.XPATH, 
-                            ".//*[contains(@class, 'price')] | .//*[contains(@class, 'Price')] | .//*[contains(@class, 'selling')] | .//*[contains(@class, 'value')]"
-                        )
-                        prices_found = []
-                        for pe in price_elements:
-                            text = pe.text.replace("$", "").replace(".", "").replace("/un", "").strip()
-                            # Extraer solo dígitos
-                            digits = "".join([c for c in text if c.isdigit()])
-                            if digits:
-                                prices_found.append(int(digits))
+                        lt_elem = card.find_element(By.XPATH, ".//*[contains(@class, 'line-through')]")
+                        text = lt_elem.text.replace("$", "").replace(".", "").strip()
+                        digits = "".join([c for c in text if c.isdigit()])
+                        if digits:
+                            price_normal = int(digits)
+                            price_promo = price_val
+                    except:
+                        pass
                         
-                        # Eliminar duplicados manteniendo orden
-                        prices_found = list(dict.fromkeys(prices_found))
-                        
-                        if len(prices_found) == 1:
-                            price_normal = prices_found[0]
-                        elif len(prices_found) >= 2:
-                            # Típicamente el menor es la oferta activa y el mayor es el precio lista/normal
-                            price_promo = min(prices_found)
-                            price_normal = max(prices_found)
-                    except Exception as pe_err:
-                        logger.debug(f"Error procesando precios de Jumbo: {pe_err}")
-
                     # Disponibilidad (Validar si hay botón de comprar o etiqueta de agotado)
                     is_available = True
                     try:
@@ -107,19 +83,18 @@ class JumboScraper(BaseScraper):
                     except:
                         pass
 
-                    if sku and name and price_normal > 0:
-                        products.append({
-                            "skuSupermarket": sku,
-                            "name": name,
-                            "brand": brand,
-                            "category": category_name,
-                            "priceNormal": price_normal,
-                            "pricePromo": price_promo,
-                            "url": product_url,
-                            "isAvailable": is_available
-                        })
+                    products.append({
+                        "skuSupermarket": sku,
+                        "name": name,
+                        "brand": brand,
+                        "category": category_name,
+                        "priceNormal": price_normal,
+                        "pricePromo": price_promo,
+                        "url": product_url,
+                        "isAvailable": is_available
+                    })
                 except Exception as card_err:
-                    logger.error(f"Error procesando tarjeta individual en Jumbo: {card_err}", exc_info=True)
+                    logger.debug(f"Error procesando tarjeta individual en Jumbo: {card_err}")
                     continue
                     
         except Exception as e:
