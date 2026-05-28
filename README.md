@@ -4,7 +4,7 @@ Este monorrepisitorio de nivel de producción implementa un sistema robusto de e
 
 ---
 
-## 🛠️ Arquitectura y Flujo de Datos
+## Arquitectura y Flujo de Datos
 
 El sistema se compone de tres microservicios principales contenerizados de forma aislada que interactúan de forma fluida a través de una red privada virtual de Docker:
 
@@ -22,7 +22,7 @@ graph TD
 
 ---
 
-## 📁 Estructura del Monorrepisitorio
+## Estructura del Monorrepisitorio
 
 ```
 /
@@ -39,7 +39,7 @@ graph TD
 
 ---
 
-## 🚀 Guía de Despliegue Rápido (1 Paso)
+## Guía de Despliegue Rápido (1 Paso)
 
 El entorno completo está automatizado mediante Docker Compose. Solo necesitas tener instalado **Docker** y **Docker Compose**.
 
@@ -73,7 +73,7 @@ Puedes revisar los logs de inicio y funcionamiento de cada contenedor:
 
 ---
 
-## 🧪 Cómo Probar la Integración Extremo a Extremo (E2E)
+## Cómo Probar la Integración Extremo a Extremo (E2E)
 
 Para validar que el pipeline de ingesta batch, el algoritmo de desduplicación del catálogo maestro y el motor de alertas de descuentos funcionan de forma 100% correcta sin esperar a que el scraper termine una recolección real, hemos integrado un script de validación automatizada.
 
@@ -111,18 +111,18 @@ docker exec etl-postgres-db psql -U monitor_user -d price_monitor_db -c "SELECT 
 
 ---
 
-## 🛒 Ejecución del Scraping en Vivo (Páginas Reales)
+## Ejecución del Scraping en Vivo (Páginas Reales)
 
 El scraper de Python está configurado para conectarse en vivo a **super.lider.cl** y **jumbo.cl**, extraer las categorías parametrizadas en [config.py](file:///Users/luisr/Proyectos/ETL%20-%20Monitoreo%20de%20Precios/price-monitor-scraper/config.py) (Despensa y Lácteos) e inyectarlas al Backend.
 
-### 🛡️ Estrategias de Extracción de Alto Rendimiento e Evasión
+### Estrategias de Extracción de Alto Rendimiento e Evasión
 Para garantizar que el scraper sea robusto y apto para producción, se diseñó bajo dos pilares avanzados:
 1. **Walmart "Tempo" Next.js Hydration Decoupling (Líder):** En lugar de parsear divs dinámicos y frágiles en el DOM, el scraper intercepta la etiqueta `<script id="__NEXT_DATA__">` y decodifica recursivamente el estado JSON del nuevo framework e-commerce **"Tempo"** de Walmart (`initialTempoData`). Esto permite extraer el código de barras universal EAN/GTIN (`usItemId`) como SKU y procesar descuentos desde `wasPrice` a máxima velocidad y con 100% de fidelidad.
 2. **VTEX Native Attributes (Jumbo):** Las tarjetas de producto en Jumbo se localizan unívocamente mediante el atributo nativo de búsqueda `//div[@data-cnstrc-item-id]`. El SKU, nombre y precio se extraen directamente de los atributos del contenedor, haciéndolo inmune a cambios visuales en el front-end.
 
 ---
 
-### 👤 Geolocalización y Bypass de Modales (Líder)
+### Geolocalización y Bypass de Modales (Líder)
 Walmart (Líder) redirige de forma forzada a los usuarios nuevos abriendo un modal que bloquea la pantalla pidiendo elegir un modo de entrega. Para solucionar esto sin inyectar código complejo, implementamos **Persistencia de Perfil de Chrome (Chrome User Data Directory)**:
 
 #### Configuración Inicial (Solo 1 vez):
@@ -171,14 +171,4 @@ Si estás depurando en desarrollo y quieres ejecutar el scraper directamente sob
    python3 main.py
    ```
 
----
-
-## 🛡️ Estándar de Mensajes de Commits (Conventional Commits)
-
-Este repositorio exige el uso estricto del estándar de **Conventional Commits** para mantener un historial legible y automatizable:
-
-* `feat(...)`: Adición de una nueva funcionalidad al sistema (ej. `feat: implement jpa entities and catalog mdm`).
-* `fix(...)`: Corrección de un bug en el código (ej. `fix: resolve duplicate key violation on brand upsert`).
-* `refactor(...)`: Mejoras estructurales de legibilidad o rendimiento del código sin cambiar su funcionalidad.
-* `docs(...)`: Modificaciones exclusivas en archivos de documentación (ej. `docs: update main README with E2E instructions`).
-* `chore(...)`: Tareas de mantenimiento, configuraciones generales o actualización de dependencias.
+   
