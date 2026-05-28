@@ -27,41 +27,84 @@ class LiderScraper(BaseScraper):
             next_data_elem = self.driver.find_element(By.ID, "__NEXT_DATA__")
             next_data_json = json.loads(next_data_elem.get_attribute("innerHTML"))
             
-            # Buscar recursivamente la lista de productos en el estado hidratado
-            # Las estructuras típicas son props.pageProps.initialState.search.results o similares
+            # Buscar la lista de productos en el estado hidratado
             props = next_data_json.get("props", {})
             page_props = props.get("pageProps", {})
             initial_state = page_props.get("initialState", {})
             
             raw_products = []
-            # Intentar diferentes rutas comunes en Next.js para catalogación de Líder
-            if "products" in page_props:
-                raw_products = page_props["products"]
-            elif "products" in initial_state:
-                raw_products = initial_state["products"]
-            elif "search" in initial_state and "results" in initial_state["search"]:
-                raw_products = initial_state["search"]["results"]
-            elif "catalog" in initial_state and "products" in initial_state["catalog"]:
-                raw_products = initial_state["catalog"]["products"]
+            
+            # 1. Intentar ruta de la nueva plataforma Walmart "Tempo"
+            initial_tempo_data = page_props.get("initialTempoData", {})
+            tempo_data = initial_tempo_data.get("data", {})
+            content_layout = tempo_data.get("contentLayout", {})
+            modules = content_layout.get("modules", [])
+            
+            for mod in modules:
+                configs = mod.get("configs", {})
+                prod_config = configs.get("productsConfig", {})
+                prods = prod_config.get("products", [])
+                if prods:
+                    raw_products.extend(prods)
+                    
+            # 2. Fallback a rutas tradicionales de la plataforma anterior
+            if not raw_products:
+                if "products" in page_props:
+                    raw_products = page_props["products"]
+                elif "products" in initial_state:
+                    raw_products = initial_state["products"]
+                elif "search" in initial_state and "results" in initial_state["search"]:
+                    raw_products = initial_state["search"]["results"]
+                elif "catalog" in initial_state and "products" in initial_state["catalog"]:
+                    raw_products = initial_state["catalog"]["products"]
                 
             if raw_products:
-                logger.info(f"__NEXT_DATA__ interceptado con éxito. Se encontraron {len(raw_products)} productos.")
+                logger.info(f"__NEXT_DATA__ interceptado con éxito. Se encontraron {len(raw_products)} productos en bruto.")
                 for p in raw_products:
-                    # Mapear los campos del JSON de Líder
-                    sku = str(p.get("sku") or p.get("id") or "")
-                    name = p.get("displayName") or p.get("name") or ""
+                    # Soportar dinámicamente ambos esquemas (Tempo y Tradicional)
+                    sku = str(p.get("usItemId") or p.get("sku") or p.get("id") or "")
+                    name = p.get("name") or p.get("displayName") or ""
                     brand = p.get("brand") or "Genérico"
                     
-                    price_info = p.get("price", {})
-                    price_normal = price_info.get("priceNumber") or p.get("priceNormal") or 0
-                    price_promo = price_info.get("promoPrice") or p.get("pricePromo") or None
+                    price_val = p.get("price") or 0
+                    price_info = p.get("priceInfo", {})
                     
-                    # Convertir a entero
+                    # Esquema tradicional
+                    old_price_info = p.get("price", {}) if isinstance(p.get("price"), dict) else {}
+                    
+                    if old_price_info:
+                        price_normal = old_price_info.get("priceNumber") or p.get("priceNormal") or 0
+                        price_promo = old_price_info.get("promoPrice") or p.get("pricePromo") or None
+                    elif isinstance(price_info, dict) and "wasPrice" in price_info:
+                        # Esquema Tempo (Con descuento)
+                        price_normal = price_val
+                        price_promo = None
+                        was_price_str = price_info.get("wasPrice")
+                        if was_price_str:
+                            try:
+                                cleaned = was_price_str.replace("$", "").replace(".", "").strip()
+                                if cleaned.isdigit():
+                                    price_normal = int(cleaned)
+                                    price_promo = price_val
+                            except:
+                                pass
+                    else:
+                        # Esquema Tempo (Precio regular)
+                        price_normal = price_val
+                        price_promo = None
+                        
                     price_normal = int(price_normal) if price_normal else 0
                     price_promo = int(price_promo) if price_promo else None
                     
-                    url_suffix = p.get("productUrl") or f"/product/{sku}"
-                    product_url = f"https://www.lider.cl/supermercado{url_suffix}" if not url_suffix.startswith("http") else url_suffix
+                    # URL
+                    url_suffix = p.get("canonicalUrl") or p.get("productUrl") or f"/product/{sku}"
+                    if url_suffix.startswith("http"):
+                        product_url = url_suffix
+                    else:
+                        product_url = f"https://super.lider.cl{url_suffix}"
+                        
+                    # Disponibilidad
+                    is_available = not p.get("isOutOfStock", False) if "isOutOfStock" in p else p.get("available", True)
                     
                     if sku and name:
                         products.append({
@@ -72,7 +115,7 @@ class LiderScraper(BaseScraper):
                             "priceNormal": price_normal,
                             "pricePromo": price_promo,
                             "url": product_url,
-                            "isAvailable": p.get("available", True)
+                            "isAvailable": is_available
                         })
                 return products
         except Exception as e:
