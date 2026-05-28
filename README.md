@@ -113,45 +113,61 @@ docker exec etl-postgres-db psql -U monitor_user -d price_monitor_db -c "SELECT 
 
 ## 🛒 Ejecución del Scraping en Vivo (Páginas Reales)
 
-El scraper de Python ya está configurado en el ecosistema para conectarse en vivo a **lider.cl** y **jumbo.cl**, extraer las categorías parametrizadas en [config.py](file:///Users/luisr/Proyectos/ETL%20-%20Monitoreo%20de%20Precios/price-monitor-scraper/config.py) (Despensa y Lácteos) e inyectarlas al Backend.
+El scraper de Python está configurado para conectarse en vivo a **super.lider.cl** y **jumbo.cl**, extraer las categorías parametrizadas en [config.py](file:///Users/luisr/Proyectos/ETL%20-%20Monitoreo%20de%20Precios/price-monitor-scraper/config.py) (Despensa y Lácteos) e inyectarlas al Backend.
 
-Dispones de dos métodos para gatillar la recolección real:
+### 🛡️ Estrategias de Extracción de Alto Rendimiento e Evasión
+Para garantizar que el scraper sea robusto y apto para producción, se diseñó bajo dos pilares avanzados:
+1. **Walmart "Tempo" Next.js Hydration Decoupling (Líder):** En lugar de parsear divs dinámicos y frágiles en el DOM, el scraper intercepta la etiqueta `<script id="__NEXT_DATA__">` y decodifica recursivamente el estado JSON del nuevo framework e-commerce **"Tempo"** de Walmart (`initialTempoData`). Esto permite extraer el código de barras universal EAN/GTIN (`usItemId`) como SKU y procesar descuentos desde `wasPrice` a máxima velocidad y con 100% de fidelidad.
+2. **VTEX Native Attributes (Jumbo):** Las tarjetas de producto en Jumbo se localizan unívocamente mediante el atributo nativo de búsqueda `//div[@data-cnstrc-item-id]`. El SKU, nombre y precio se extraen directamente de los atributos del contenedor, haciéndolo inmune a cambios visuales en el front-end.
 
-### Método A: Ejecución en Vivo mediante Docker (Recomendado)
+---
 
-Dado que todo el ecosistema ya está contenerizado, el scraper corre una extracción completa de forma automática la primera vez que levantas el compose (`docker compose up -d`).
+### 👤 Geolocalización y Bypass de Modales (Líder)
+Walmart (Líder) redirige de forma forzada a los usuarios nuevos abriendo un modal que bloquea la pantalla pidiendo elegir un modo de entrega. Para solucionar esto sin inyectar código complejo, implementamos **Persistencia de Perfil de Chrome (Chrome User Data Directory)**:
 
-Si deseas **volver a gatillar la extracción en vivo bajo demanda** en cualquier momento posterior (por ejemplo, al día siguiente para registrar un nuevo histórico), solo debes iniciar el servicio del scraper:
+#### Configuración Inicial (Solo 1 vez):
+Para guardar de forma permanente las cookies de ubicación en tu máquina local:
+1. Asegúrate de estar en el directorio del scraper:
+   ```bash
+   cd price-monitor-scraper
+   ```
+2. Ejecuta el scraper en modo **visible** (interactivo):
+   ```bash
+   HEADLESS_SCRAPE=False python3 main.py
+   ```
+3. Cuando se abra la ventana emulada de Chrome, haz clic en **"Retiro Pickup"** o **"Despacho"** en el modal de Líder y selecciona una tienda (ej. Vitacura).
+4. Chrome guardará las cookies de sesión y geolocalización dentro de la carpeta local `price-monitor-scraper/chrome_profile/`.
 
+*¡Listo! Todas las ejecuciones futuras (locales o mediante Docker en segundo plano en modo Headless `HEADLESS_SCRAPE=True`) leerán automáticamente el perfil persistente, omitirán el modal de Walmart y extraerán los productos de forma 100% autónoma sin intervención humana.*
+
+---
+
+### Métodos de Ejecución
+
+#### Método A: Ejecución en Vivo mediante Docker (Recomendado)
+El scraper corre una extracción completa de forma automática la primera vez que levantas el compose (`docker compose up -d`).
+
+Si deseas **volver a gatillar la extracción en vivo bajo demanda** en cualquier momento posterior (para registrar un nuevo histórico), solo debes iniciar el servicio:
 ```bash
 docker compose start scraper-service
 ```
+*Este comando despertará al contenedor del scraper, el cual abrirá Chromium en segundo plano, leerá las cookies, extraerá los precios en vivo de Líder y Jumbo, transmitirá el lote al backend y se apagará de forma limpia automáticamente.*
 
-*Este comando despertará al contenedor del scraper, el cual abrirá Chromium en segundo plano, extraerá los precios en vivo de Líder y Jumbo, transmitirá el lote al backend y luego se apagará de forma limpia automáticamente.*
-
-Para ver los logs y seguir el progreso de la extracción real en tiempo real:
+Seguir logs en tiempo real:
 ```bash
 docker logs -f etl-python-scraper
 ```
 
-### Método B: Ejecución Interactiva Local (Para Desarrollo / Ver Navegador)
-
-Si estás depurando selectores en desarrollo y quieres **ver visualmente cómo la automatización de Chrome navega y ejecuta scroll en Jumbo y Líder**:
-
+#### Método B: Ejecución Interactiva Local
+Si estás depurando en desarrollo y quieres ejecutar el scraper directamente sobre tu host:
 1. Asegurar que los contenedores de la Base de Datos y Backend estén arriba (en los puertos `5433` y `8085`).
 2. Ingresar al directorio del scraper:
    ```bash
    cd price-monitor-scraper
    ```
-3. Activar el entorno virtual e instalar dependencias en tu máquina:
+3. Activar el entorno virtual e iniciar la recolección:
    ```bash
-   python3 -m venv venv
    source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-4. Modificar la variable `HEADLESS = False` en [config.py](file:///Users/luisr/Proyectos/ETL%20-%20Monitoreo%20de%20Precios/price-monitor-scraper/config.py) para que Selenium levante la interfaz gráfica de Chrome.
-5. Iniciar la recolección manual en vivo:
-   ```bash
    python3 main.py
    ```
 
