@@ -13,6 +13,11 @@ class JumboScraper(BaseScraper):
         self.driver.get(url)
         time.sleep(5)
         
+        # Depuración visual de lo que carga en pantalla
+        screenshot_path = f"{category_name}_jumbo_debug.png"
+        self.driver.save_screenshot(screenshot_path)
+        logger.info(f"Captura de pantalla de depuración guardada en: {screenshot_path}")
+        
         products = []
         
         try:

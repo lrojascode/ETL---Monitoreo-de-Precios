@@ -11,9 +11,13 @@ class LiderScraper(BaseScraper):
         """Extrae productos de una categoría en lider.cl"""
         logger.info(f"Navegando a la categoría '{category_name}' en Líder: {url}")
         self.driver.get(url)
-        time_to_wait = 6
         import time
-        time.sleep(time_to_wait)
+        time.sleep(8)
+        
+        # Depuración visual de lo que carga en pantalla
+        screenshot_path = f"{category_name}_lider_debug.png"
+        self.driver.save_screenshot(screenshot_path)
+        logger.info(f"Captura de pantalla de depuración guardada en: {screenshot_path}")
         
         products = []
         
