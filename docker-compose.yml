@@ -12,9 +12,9 @@ services:
     image: postgres:15-alpine
     container_name: etl-postgres-db
     environment:
-      POSTGRES_DB: price_monitor_db
-      POSTGRES_USER: monitor_user
-      POSTGRES_PASSWORD: SecretProductionPassword2026
+      POSTGRES_DB: ${POSTGRES_DB:-price_monitor_db}
+      POSTGRES_USER: ${POSTGRES_USER:-monitor_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-password}
     ports:
       - "5433:5432"
     volumes:
@@ -38,11 +38,11 @@ services:
       - "8085:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/price_monitor_db
-      - SPRING_DATASOURCE_USERNAME=monitor_user
-      - SPRING_DATASOURCE_PASSWORD=SecretProductionPassword2026
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-monitor_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-local-dev-password}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
       - SERVER_PORT=8080
-      - APP_SECURITY_API-KEY=PROD_SECURE_EXTRACTOR_KEY_2026
+      - APP_SECURITY_API_KEY=${API_KEY:-local-dev-api-key}
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -63,7 +63,7 @@ services:
     container_name: etl-python-scraper
     environment:
       - BACKEND_API_URL=http://backend-api:8080/api/v1/etl/ingest
-      - API_KEY=PROD_SECURE_EXTRACTOR_KEY_2026
+      - API_KEY=${API_KEY:-local-dev-api-key}
       - HEADLESS_SCRAPE=True
     depends_on:
       - backend-api

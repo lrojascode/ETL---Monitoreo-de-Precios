@@ -44,4 +44,6 @@ infonegocio.md
 
 # Archivos temporales de extracción y depuración del scraper
 price-monitor-scraper/*.png
+!price-monitor-scraper/Despensa_lider_debug.png
+!price-monitor-scraper/Despensa_jumbo_debug.png
 price-monitor-scraper/chrome_profile/

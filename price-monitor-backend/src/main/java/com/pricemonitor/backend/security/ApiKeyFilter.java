@@ -16,7 +16,7 @@ import java.util.Collections;
 @Component
 public class ApiKeyFilter extends OncePerRequestFilter {
 
-    @Value("${app.security.api-key:PROD_SECURE_EXTRACTOR_KEY_2026}")
+    @Value("${app.security.api-key:local-dev-api-key}")
     private String expectedApiKey;
 
     @Override

@@ -1,0 +1,16 @@
+{
+  "supermarket": "LIDER",
+  "extractionDate": "2026-08-27T12:00:00Z",
+  "products": [
+    {
+      "skuSupermarket": "LECHE-123",
+      "name": "Leche Entera Soprole 1L",
+      "brand": "Soprole",
+      "category": "Lacteos",
+      "priceNormal": 1500,
+      "pricePromo": 900,
+      "url": "https://super.lider.cl/product/LECHE-123",
+      "isAvailable": true
+    }
+  ]
+}

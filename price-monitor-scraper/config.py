@@ -13,7 +13,7 @@ JUMBO_CATEGORIES = {
 
 # Configuración del Endpoint del Backend REST
 BACKEND_API_URL = os.environ.get("BACKEND_API_URL", "http://localhost:8085/api/v1/etl/ingest")
-API_KEY = os.environ.get("API_KEY", "PROD_SECURE_EXTRACTOR_KEY_2026")
+API_KEY = os.environ.get("API_KEY", "local-dev-api-key")
 
 # Configuraciones de Selenium
 HEADLESS = os.environ.get("HEADLESS_SCRAPE", "True").lower() == "true"

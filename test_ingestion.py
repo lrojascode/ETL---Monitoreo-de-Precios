@@ -1,9 +1,10 @@
 import requests
 import json
+import os
 from datetime import datetime, timedelta, timezone
 
-API_URL = "http://localhost:8085/api/v1/etl/ingest"
-API_KEY = "PROD_SECURE_EXTRACTOR_KEY_2026"
+API_URL = os.environ.get("BACKEND_API_URL", "http://localhost:8085/api/v1/etl/ingest")
+API_KEY = os.environ.get("API_KEY", "local-dev-api-key")
 
 def send_ingest(supermarket, date_str, products):
     payload = {
